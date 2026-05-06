@@ -1,0 +1,130 @@
+(de subst (w r x) # good use of primitive functions
+	(cond
+		((atom x)
+			(cond ((== x r) w) ('T x))
+		) ('T
+			(cons (subst w r (car x)) (subst w r (cdr x)))
+		)
+	)
+)
+
+(de null (x) (== x '()))
+
+(de and. (x y)
+	(cond
+		(x
+			(cond (y 'T) ('T '()))
+		) ('T '())
+	)
+)
+
+(de not. (x) (cond (x '()) ('T 'T)))
+
+(de append. (x y)
+	(cond
+		((null x) y) ('T
+			(cons (car x) (append. (cdr x) y))
+		)
+	)
+)
+
+(de pair. (x y)
+	(cond
+		((and. (null x) (null y)) '()) ('T
+			(cons
+				(list (car x) (car y))
+				(pair. (cdr x) (cdr y))
+			)
+		)
+	)
+)
+
+(de assoc. (x a)
+	(cond
+		((null a) '()) # safety clause
+		# a = ((key val) ...)
+		((== x (caar a)) (cadar a)) ('T
+			(assoc. x (cdr a))
+		)
+	)
+)
+
+(de eval. (e a) # e = expression, a = context: ((f def) (g def)...)
+	(cond
+		((atom e) # primitives are evaled in lists
+			(assoc. e a) # replace w/ def
+		) ((atom (car e)) # (func arg arg...) = (car cadr caddr...)
+			(cond
+				((== (car e) 'quote)
+					(cadr e) # unevaluated
+				) ((== (car e) 'atom) # up until cons is understandable
+					(atom (eval. (cadr e) a))
+				) ((== (car e) 'eq)
+					(== (eval. (cadr e) a) (eval. (caddr e) a))
+				) ((== (car e) 'car)
+					(car (eval. (cadr e) a))
+				) ((== (car e) 'cdr)
+					(cdr (eval. (cadr e) a))
+				) ((== (car e) 'cons)
+					(cons (eval. (cadr e) a) (eval. (caddr e) a))
+				) ((== (car e) 'cond)
+					(evcon (cdr e) a) # helper function
+				) ('T
+					(eval. # replace w/ def first, then feed args 
+						(cons
+							(assoc. (car e) a)
+							(cdr e)
+						)
+					a)
+				)
+			)
+		) ((== (caar e) 'label) # ((label f def) ...)
+			(eval.
+				(cons (caddar e) (cdr e)) # feed into def, but...
+				# remember: label allows the def to contain f itself 
+				(cons (list (cadar e) (car e)) a)
+			)
+		) ((== (caar e) 'lambda) # ((lambda (a b) def) ...)
+			(eval.
+				(caddar e) # feed into def, but...
+				(append.
+					(pair.
+						(cadar e) # arguments in def
+						(evlis (cdr e) a) # become inputs
+					)
+				a)
+			)
+		)
+	)
+)
+
+(de evcon (c a) # helper function for cond: c = ((a b) (c d)...)
+	(cond
+		((eval. (caar c) a)
+			(eval. (cadar c) a)
+		) ('T
+			(evcon (cdr c) a)
+		)
+	)
+)
+
+(de evlis (m a) # evaluates a list of inputs
+	(cond
+		((null m) '()) ('T
+			(cons
+				(eval. (car m) a)
+				(evlis (cdr m) a)
+			)
+		)
+	)
+)
+
+(eval. '(
+(label subst (lambda (x y z)
+(cond ((atom z)
+(cond ((eq z y) x)
+((quote t) z)))
+((quote t) (cons (subst x y (car z))
+(subst x y (cdr z))))))) (quote m) (quote b) (quote (a b (a b c) d))
+))
+# -> (a m (a m c) d)

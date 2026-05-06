@@ -1,0 +1,3 @@
+# https://www.ic.unicamp.br/~meidanis/courses/mc336/problemas-lisp/L-99_Ninety-Nine_Lisp_Problems.html
+
+(de p1 (a) (cond ((cdr a) (p1 (cdr a))) ('T (cdr a))))
