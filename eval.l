@@ -8,7 +8,7 @@
 	)
 )
 
-(de null (x) (== x '()))
+(de null (x) (== x '())) # technically this should test for atom first
 
 (de and. (x y)
 	(cond
@@ -97,6 +97,7 @@
 		)
 	)
 )
+# a is used instead of simple substitution, because some symbols are bound to expressions, and some are unbound.
 
 (de evcon (c a) # helper function for cond: c = ((a b) (c d)...)
 	(cond
@@ -108,7 +109,7 @@
 	)
 )
 
-(de evlis (m a) # evaluates a list of inputs
+(de evlis (m a) # maps eval a list of inputs
 	(cond
 		((null m) '()) ('T
 			(cons
@@ -120,11 +121,91 @@
 )
 
 (eval. '(
-(label subst (lambda (x y z)
-(cond ((atom z)
-(cond ((eq z y) x)
-((quote t) z)))
-((quote t) (cons (subst x y (car z))
-(subst x y (cdr z))))))) (quote m) (quote b) (quote (a b (a b c) d))
+	(label subst (lambda (x y z)
+		(cond ((atom z)
+			(cond
+				((eq z y) x)
+				((quote t) z)))
+				((quote t)
+					(cons
+						(subst x y (car z))
+						(subst x y (cdr z))
+					)
+				)
+			)
+		)
+	) (quote m) (quote b) (quote (a b (a b c) d))
 ))
 # -> (a m (a m c) d)
+
+############### extra things from the original paper
+
+(de abs. (x) (cond ((le0 x) (- x)) ('T x)))
+
+(de sign (x) (cond ((le0 x) -1) ((=0 x) 0) ('T 1)))
+
+(de fact (x) (cond ((=0 x) 1) ('T (* x (fact (dec x))))))
+
+(de gcd (m n)
+	(cond
+		((> m n) (gcd n m))
+		((=0 (% n m)) m)
+		('T (gcd (% n m) m))
+	)
+)
+
+# ...
+
+(de ff (x) (cond ((atom x) x) ('T (car x))))
+
+(de equal. (x y)
+	(cond
+		((and (atom x) (atom y)) (== x y))
+		((and (not (atom x)) (not (atom y)))
+			(and
+				(equal. (car x) (car y))
+				(equal. (cdr x) (cdr y))
+			)
+		)
+		('T '())
+	)
+)
+
+(de among (x y)
+	(cond
+		((null y) '())
+		('T (or (== x (car y)) (among x (cdr y))))
+	)
+)
+
+(de sub1 (x z) # x is like a from eval: ((r w) ...)
+	(cond
+		((null x) z)
+		((== (caar x) z) (cadar x))
+		('T (sub1 (cdr x) z))
+	)
+)
+
+(de sublis (x y)
+	(cond
+		((atom y) (sub1 x y))
+		('T (cons (sublis x (car y)) (sublis x (cdr y))))
+	)
+)
+
+(de apply. (f a) (eval (cons f (appq a)) '()))
+
+(de appq (m)
+	(cond
+		((null m) '())
+		('T (cons (list 'quote (car m)) (appq (cdr m))))
+	)
+)
+
+(de maplist. (x f)
+	(cond
+		((null x) '())
+		('T (cons (f x) (f (maplist. (cdr x) f))))
+	) # note how car wasn't used
+)
+
