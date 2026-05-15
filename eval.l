@@ -48,6 +48,7 @@
 		)
 	)
 )
+# if ((null a) x) were used instead, it could allow more first-class functionality in eval.
 
 (de eval. (e a) # e = expression, a = context: ((f def) (g def)...)
 	(cond
@@ -205,7 +206,23 @@
 (de maplist. (x f)
 	(cond
 		((null x) '())
-		('T (cons (f x) (f (maplist. (cdr x) f))))
+		('T (cons (f x) (maplist. (cdr x) f)))
 	) # note how car wasn't used
 )
 
+(de diff. (y x) # rare usage of lambdas not in defun
+	(cond
+		((atom y) (cond ((== y x) 1) ('T 0)))
+		((== (car y) '+)
+			(cons '+ (maplist. (cdr y) '((z) (diff (car z) x))))
+		) ((== (car y) '*)
+			(cons '+ (maplist. (cdr y) '((z)
+				(cons '* (maplist (cdr y) '((w)
+					(cond ((!= z w) (car w)) ('T (diff (car w) x)))
+				)))
+			)))
+		)
+	)
+) # (diff. '(* x (+ x a) y) 'x) -> (+ (* 1 (+ x a) y) (* x (+ 1 0) y) (* x (+ x a) 0))
+
+(de search. (x p f u) (cond ((null x) u) ((p x) (f x))))
