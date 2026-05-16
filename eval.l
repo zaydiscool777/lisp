@@ -210,17 +210,28 @@
 	) # note how car wasn't used
 )
 
-(de diff. (y x) # rare usage of lambdas not in defun
+(de diff. (Y X) # i don't know why, but if they are lowercase it breaks
 	(cond
-		((atom y) (cond ((== y x) 1) ('T 0)))
-		((== (car y) '+)
-			(cons '+ (maplist. (cdr y) '((z) (diff (car z) x))))
-		) ((== (car y) '*)
-			(cons '+ (maplist. (cdr y) '((z)
-				(cons '* (maplist (cdr y) '((w)
-					(cond ((!= z w) (car w)) ('T (diff (car w) x)))
-				)))
-			)))
+		((atom Y)
+			(cond
+				((== Y X) 1)
+				('T 0)
+			)
+		) ((== (car Y) '+)
+			(cons '+
+				(maplist. (cdr Y) '((z) (diff. (car z) X)))
+			)
+		) ((== (car Y) '*)
+			(cons '+
+				(maplist. (cdr Y) '((z)
+					(maplist. (cdr Y) '((w)
+						(cond
+							((equal. (car w) (car z)) (diff. (car w) X))
+							('T (car w))
+						)
+					))
+				))
+			)
 		)
 	)
 ) # (diff. '(* x (+ x a) y) 'x) -> (+ (* 1 (+ x a) y) (* x (+ 1 0) y) (* x (+ x a) 0))
